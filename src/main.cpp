@@ -57,7 +57,7 @@ static constexpr int       NET_TASK_CORE        = 1;
 static constexpr uint32_t  NET_TASK_STACK_SIZE  = 4096;
 
 // --- Queue Configuration ---
-static constexpr uint8_t MQTT_QUEUE_LENGTH = 5;          // Number of items in each queue
+static constexpr uint8_t MQTT_QUEUE_LENGTH = 20;         // Number of items in each queue
 static constexpr uint8_t MQTT_MSG_MAX_LEN = 255;         // Max len for a queued string
 static constexpr TickType_t QUEUE_SEND_WAIT_TICKS = 10;  // 10 ticks to wait if queue is full
 
