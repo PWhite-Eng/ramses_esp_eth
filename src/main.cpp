@@ -27,6 +27,7 @@
 #include <MQTT.h>
 #include <ArduinoHA.h>
 #include <time.h>                         // For NTP time synchronization
+#include "esp_sntp.h"                     // Add this for sntp_set_sync_interval
 
 // Project-specific Headers
 #include "config_secrets.h"               // User configuration
@@ -490,19 +491,32 @@ void loop() {
  */
 void setupNTP(void) {
     ESP_LOGI(TAG_NET,"NET_SETUP, Configuring NTP...");
+
+    // Set the sync interval to 1 hour (3600000 ms) - Default is usually 1 hour, but this ensures it.
+    // Note: This function must be called BEFORE configTime in some SDK versions, 
+    // or can be called anytime to update the interval.
+    sntp_set_sync_interval(3600000);
+
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     
     ESP_LOGI(TAG_NET,"NET_SETUP, Waiting for NTP time sync...");
     time_t now = time(nullptr);
-    while (now < 1577836800) { // Wait until time is > the year 2020 (i.e., NTP sync is valid)
+    
+    // Wait loop with timeout (don't block forever if internet is down)
+    int retry = 0;
+    while (now < 1577836800 && retry < 20) { // Wait until time is > the year 2020 (i.e., NTP sync is valid)
         delay(500);
         now = time(nullptr);
+        retry++;
     }
-    ESP_LOGI(TAG_NET,"NET_SETUP, NTP time sync complete.");
-    
-    struct tm timeinfo;
-    gmtime_r(&now, &timeinfo);
-    ESP_LOGI(TAG_NET,"NET_SETUP, Current time: %s", asctime(&timeinfo));
+    if (now < 1577836800) {
+        ESP_LOGW(TAG_NET, "NET_SETUP, NTP Sync Timed Out! Time may be incorrect.");
+    } else {
+        ESP_LOGI(TAG_NET,"NET_SETUP, NTP time sync complete.");
+        struct tm timeinfo;
+        gmtime_r(&now, &timeinfo);
+        ESP_LOGI(TAG_NET,"NET_SETUP, Current time: %s", asctime(&timeinfo));
+    }
 }
 
 /**
