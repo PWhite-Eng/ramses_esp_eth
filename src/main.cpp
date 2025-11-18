@@ -426,6 +426,41 @@ void setup() {
 //-----------------------------------------------------------------------------
 void loop() {
   // This loop runs on Core 1.
+  // --- Network Watchdog Logic ---
+  static unsigned long linkLostTimestamp = 0;
+  const unsigned long LINK_TIMEOUT_MS = 60000; // 60 seconds
+  if (Ethernet.linkStatus() == LinkOFF) {
+      if (linkLostTimestamp == 0) {
+          linkLostTimestamp = millis(); // Start timer
+          ESP_LOGW(TAG_NET, "Network Watchdog: Ethernet Link DOWN. Starting timer...");
+      } else if (millis() - linkLostTimestamp > LINK_TIMEOUT_MS) {
+          ESP_LOGE(TAG_NET, "Network Watchdog: Link down > 60s. Forcing W5500 Hardware Reset!");
+          
+          // 1. Hold Reset LOW for 100ms
+          pinMode(W5500_RST, OUTPUT);
+          digitalWrite(W5500_RST, LOW);
+          delay(100);
+          digitalWrite(W5500_RST, HIGH);
+          
+          // 2. Re-initialize Ethernet
+          // Note: We use the global 'mac' buffer filled in setup()
+          Ethernet.begin((byte*)mac); 
+          
+          linkLostTimestamp = 0; // Reset timer
+          ESP_LOGI(TAG_NET, "Network Watchdog: W5500 Reset Complete.");
+      }
+  } else {
+      // Link is ON
+      if (linkLostTimestamp != 0) {
+          ESP_LOGI(TAG_NET, "Network Watchdog: Ethernet Link RECOVERED.");
+          linkLostTimestamp = 0;
+      }
+      
+      // Only run maintain() if link is up
+      Ethernet.maintain();
+      mqtt.loop();
+  }
+    
   // hearbeat logging every 5 seconds
   static unsigned long lastHeartbeat = 0;
   if (millis() - lastHeartbeat > 5000) {
@@ -435,9 +470,7 @@ void loop() {
   
   // Update tuning active sensor state
   tuning_active_sensor.setState(app.app_handler.cc_tuneEnabled());
-  // Handle network housekeeping
-  Ethernet.maintain();
-  mqtt.loop();
+  
   // Check boot time is correct on MQTT Server
   verifyBootTime();
   // Check if the gateway task has a message for us to publish
