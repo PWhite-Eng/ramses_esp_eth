@@ -47,7 +47,7 @@ This project is built with a specific "hybrid" design philosophy to maximize sta
 * **ESP32-S3:** Developed on an esp32-s3-devkitc-1, but other ESP32-S3 boards should work. The photo shows it working on a Waveshare [ESP32-S3-ETH](https://www.waveshare.com/esp32-s3-eth.htm) with builtin W5500 Ethernet module.  
 * **W5500 Module:** Any standard W5500-based Ethernet module.  
 * **CC1101 Module:** A CC1101 868MHz radio transceiver module (e.g., from Ebyte or a generic module).  
-* **Status LED (Optional):** A WS2812 "NeoPixel" RGB LED (this is built-in on the esp32-s3-devkitc-1 board, connected to GPIO 48).
+* **Status LED (Optional):** A WS2812 "NeoPixel" RGB LED (this is built-in on the Waveshare ESP32-S3-ETH board, connected to GPIO 21).
 
 ### **Default Pinout**
 
@@ -55,21 +55,21 @@ The hardware pinout is defined in include/config_pins.h. If your wiring is diffe
 
 | Module | Pin | ESP32-S3 Pin | Purpose |
 | :---- | :---- | :---- | :---- |
-| **Status LED** | DIN | GPIO 48 | WS2812 "NeoPixel" |
+| **Status LED** | DIN | GPIO 21 | WS2812 "NeoPixel" |
 |  |  |  |  |
-| **CC1101 (SPI)** | SCLK | GPIO 12 | SPI Clock |
-|  | MISO | GPIO 13 | SPI MISO |
+| **CC1101 (SPI)** | SCLK | GPIO 42 | SPI Clock |
+|  | MISO | GPIO 45 | SPI MISO |
+|  | MOSI | GPIO 41 | SPI MOSI |
+|  | CSN | GPIO 46 | SPI Chip Select |
+|  | GDO0 | GPIO 47 | TX FIFO Interrupt |
+|  | GDO2 | GPIO 48 | RX Async Data (to Serial1) |
+|  |  |  |  |
+| **W5500 (HSPI)** | SCLK | GPIO 13 | SPI Clock |
+|  | MISO | GPIO 12 | SPI MISO |
 |  | MOSI | GPIO 11 | SPI MOSI |
-|  | CSN | GPIO 10 | SPI Chip Select |
-|  | GDO0 | GPIO 9 | TX FIFO Interrupt |
-|  | GDO2 | GPIO 14 | RX Async Data (to Serial1) |
-|  |  |  |  |
-| **W5500 (HSPI)** | SCLK | GPIO 36 | HSPI Clock |
-|  | MISO | GPIO 37 | HSPI MISO |
-|  | MOSI | GPIO 35 | HSPI MOSI |
-|  | CS | GPIO 38 | HSPI Chip Select |
-|  | RST | GPIO 39 | W5500 Reset |
-|  | INT | GPIO 47 | W5500 Interrupt |
+|  | CS | GPIO 14 | SPI Chip Select |
+|  | RST | GPIO 9 | W5500 Reset |
+|  | INT | GPIO 10 | W5500 Interrupt |
 
 ### **Status LED Meanings**
 
@@ -93,7 +93,7 @@ The on-board WS2812 "NeoPixel" (GPIO 48) provides a visual indication of the gat
 This project is designed to be "clone and go." All user settings are stored in two files, which you must configure.
 
 1. **Clone the Repository:**  
-   git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)  
+   git clone [https://github.com/PWhite-Eng/ramses_esp_eth.git](https://github.com/PWhite-Eng/ramses_esp_eth.git)  
    cd your-repo-name
 
 2. **Configure Your Secrets:**  
