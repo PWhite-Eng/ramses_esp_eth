@@ -492,10 +492,10 @@ void loop() {
 void setupNTP(void) {
     ESP_LOGI(TAG_NET,"NET_SETUP, Configuring NTP...");
 
-    // Set the sync interval to 1 hour (3600000 ms) - Default is usually 1 hour, but this ensures it.
+    // Set the sync interval to 24 hours (24 * 60 * 60 * 1000 = 86400000 ms)
     // Note: This function must be called BEFORE configTime in some SDK versions, 
     // or can be called anytime to update the interval.
-    sntp_set_sync_interval(3600000);
+    sntp_set_sync_interval(86400000);
 
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     
