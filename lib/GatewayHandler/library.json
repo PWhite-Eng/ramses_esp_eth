@@ -1,0 +1,10 @@
+{
+    "name": "GatewayHandler",
+    "version": "1.0.0",
+    "description": "Core application logic for the Evofw ESP32 Gateway.",
+    "frameworks": "arduino",
+    "platforms": "espressif32",
+    "dependencies": {
+        "bblanchon/ArduinoJson": "^7.4.2"
+    }
+}

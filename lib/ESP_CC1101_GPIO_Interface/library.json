@@ -1,0 +1,31 @@
+{
+  "name": "ESP_CC1101_GPIO_Interface",
+  "version": "1.0.0",
+  "description": "A hardware-accelerated ESP-IDF SPI library for the CC1101 on ESP32, with manual CS and CHIP_RDYn waiting.",
+  "keywords": [
+    "cc1101",
+    "spi",
+    "esp32",
+    "esp32-s3",
+    "radio",
+    "rf"
+  ],
+  "authors": [
+    {
+      "name": "Phil White"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/your-repo-name.git"
+  },
+  "platforms": [
+    "espressif32"
+  ],
+  "frameworks": [
+    "arduino"
+  ],
+  "headers": [
+    "ESP_CC1101_GPIO_Interface.hpp"
+  ]
+}

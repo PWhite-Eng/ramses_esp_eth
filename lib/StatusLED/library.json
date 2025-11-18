@@ -1,0 +1,10 @@
+{
+    "name": "StatusLED",
+    "version": "1.0.0",
+    "description": "A non-blocking, RTOS-based status LED handler for the Evofw gateway.",
+    "frameworks": "arduino",
+    "platforms": "espressif32",
+    "dependencies": {
+        "adafruit/Adafruit NeoPixel": "^1.12.2"
+    }
+}
