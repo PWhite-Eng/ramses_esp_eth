@@ -12,7 +12,7 @@ If you are looking for a solution that provides a serial connection or uses Wi-F
 
 * **https://github.com/IndaloTech/ramses_esp.git**
 
-![Wiring Photo](docs/wiring_photo.jpg)
+![Wiring Photo](docs/wiring_photo.JPG)
 
 The "why" behind this project's design was specific:
 
