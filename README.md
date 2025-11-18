@@ -44,7 +44,7 @@ This project is built with a specific "hybrid" design philosophy to maximize sta
 
 ## **Hardware Requirements**
 
-* **ESP32-S3:** Developed on an esp32-s3-devkitc-1, but other ESP32-S3 boards should work. The photo shows it working on a Waveshare [ESP32-S3-ETH](https://www.waveshare.com/esp32-s3-eth.htm)
+* **ESP32-S3:** Developed on an esp32-s3-devkitc-1, but other ESP32-S3 boards should work. The photo shows it working on a Waveshare [ESP32-S3-ETH](https://www.waveshare.com/esp32-s3-eth.htm) with builtin W5500 Ethernet module.  
 * **W5500 Module:** Any standard W5500-based Ethernet module.  
 * **CC1101 Module:** A CC1101 868MHz radio transceiver module (e.g., from Ebyte or a generic module).  
 * **Status LED (Optional):** A WS2812 "NeoPixel" RGB LED (this is built-in on the esp32-s3-devkitc-1 board, connected to GPIO 48).
