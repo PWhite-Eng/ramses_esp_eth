@@ -93,8 +93,8 @@ The on-board WS2812 "NeoPixel" (GPIO 48) provides a visual indication of the gat
 This project is designed to be "clone and go." All user settings are stored in two files, which you must configure.
 
 1. **Clone the Repository:**  
-   git clone [https://github.com/PWhite-Eng/ramses_esp_eth.git](https://github.com/PWhite-Eng/ramses_esp_eth.git)  
-   cd ramses_esp_eth
+   `git clone [https://github.com/PWhite-Eng/ramses_esp_eth.git](https://github.com/PWhite-Eng/ramses_esp_eth.git)`  
+   `cd ramses_esp_eth`
 
 2. **Configure Your Secrets:**  
    * Find the include/config_secrets.h.example file.  
