@@ -93,15 +93,15 @@ The on-board WS2812 "NeoPixel" (GPIO 48) provides a visual indication of the gat
 This project is designed to be "clone and go." All user settings are stored in two files, which you must configure.
 
 1. **Clone the Repository:**  
-   `git clone [https://github.com/PWhite-Eng/ramses_esp_eth.git](https://github.com/PWhite-Eng/ramses_esp_eth.git)`  
+   `git clone https://github.com/PWhite-Eng/ramses_esp_eth.git`  
    `cd ramses_esp_eth`
 
 2. **Configure Your Secrets:**  
-   * Find the include/config_secrets.h.example file.  
-   * **Rename or copy** this file to include/config_secrets.h.  
-   * Open include/config_secrets.h and edit the settings (MQTT server IP, username, password) to match your local network. This file is ignored by git, so your secrets are safe.  
+   * Find the `include/config_secrets.h.example` file.  
+   * **Rename or copy** this file to `include/config_secrets.h`  
+   * Open `include/config_secrets.h` and edit the settings (MQTT server IP, username, password) to match your local network. This file is ignored by git, so your secrets are safe.  
 3. **Configure Your Pins (If Necessary):**  
-   * Open include/config_pins.h.  
+   * Open `include/config_pins.h`  
    * **If your wiring is different from the default pinout table above**, update the GPIO pin numbers in this file to match your hardware setup. If your wiring matches, you can skip this step.  
 4. **Build and Upload:**  
    * Open the project in Visual Studio Code with the PlatformIO extension.  
