@@ -423,12 +423,6 @@ void setup() {
   } else {
       ESP_LOGE(TAG_MAIN, "Error: Failed to publish boot timestamp to HA (MQTT buffer full or disconnected).");
   }
-  // Publish the device ID string.
-  if (device_id_sensor.setValue(device_id_str)) {
-      ESP_LOGI(TAG_MAIN, "Published device ID to HA: %s", device_id_str);
-  } else {
-      ESP_LOGE(TAG_MAIN, "Error: Failed to publish device ID to HA (MQTT buffer full or disconnected).");
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -725,6 +719,13 @@ void onMqttConnected() {
     ESP_LOGI(TAG_NET, "Availability topic: %s", device.getAvailabilityTopic());
     ESP_LOGI(TAG_NET, "Discovery prefix: %s", mqtt.getDiscoveryPrefix());
     ESP_LOGI(TAG_NET, "Data prefix: %s", mqtt.getDataPrefix());
+
+    // Publish the device ID string.
+    if (device_id_sensor.setValue(device_id_str)) {
+        ESP_LOGI(TAG_MAIN, "Published device ID to HA: %s", device_id_str);
+    } else {
+        ESP_LOGE(TAG_MAIN, "Error: Failed to publish device ID to HA (MQTT buffer full or disconnected).");
+    }
 }
 
 void processPublishQueue() {
