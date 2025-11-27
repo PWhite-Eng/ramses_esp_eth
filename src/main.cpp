@@ -356,7 +356,7 @@ void setup() {
   boot_time_sensor.setName("Uptime");
   boot_time_sensor.setDeviceClass("timestamp");
   boot_time_sensor.setIcon("mdi:clock-start");
-  device_id_sensor.setName("Evofw Device ID");
+  device_id_sensor.setName("rasmses_esp_eth Device ID");
   device_id_sensor.setIcon("mdi:identifier");
 
 
