@@ -124,6 +124,7 @@ HADevice device;
 HAMqtt mqtt(ethClient, device);
 HASensor cc1101_state_sensor("cc1101_state");                              // Home Assistant sensor for CC1101 state
 HABinarySensor tuning_active_sensor("tuning_active");                      // Home Assistant binary sensor for tuning active state
+HASensor device_id_sensor("device_id");
 HASensor boot_time_sensor("boot_time");                                    // Home Assistant sensor for uptime in hours // Publish with 2 decimal places
 char boot_timestamp_str[40];                                               // Buffer to hold boot timestamp string
 
@@ -355,6 +356,9 @@ void setup() {
   boot_time_sensor.setName("Uptime");
   boot_time_sensor.setDeviceClass("timestamp");
   boot_time_sensor.setIcon("mdi:clock-start");
+  device_id_sensor.setName("Evofw Device ID");
+  device_id_sensor.setIcon("mdi:identifier");
+  device_id_sensor.setValue(device_id_str);
 
 
   // --- Connect to MQTT ---
