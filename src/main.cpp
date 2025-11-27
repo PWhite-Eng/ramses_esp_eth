@@ -199,7 +199,7 @@ void setup() {
     ; // wait
   }
   
-  ESP_LOGI(TAG_MAIN, "ESP32-S3 Evofw Gateway Starting, running on Core %d", xPortGetCoreID());
+  ESP_LOGI(TAG_MAIN, "ESP32-S3 running ramses_esp_eth is starting, running on Core %d", xPortGetCoreID());
 
   // Install the global GPIO ISR service before using any interrupts
   // This is required by the EvofwProtocol library for the GDO0 interrupt
