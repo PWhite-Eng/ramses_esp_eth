@@ -358,7 +358,6 @@ void setup() {
   boot_time_sensor.setIcon("mdi:clock-start");
   device_id_sensor.setName("Evofw Device ID");
   device_id_sensor.setIcon("mdi:identifier");
-  device_id_sensor.setValue(device_id_str);
 
 
   // --- Connect to MQTT ---
@@ -424,6 +423,8 @@ void setup() {
   } else {
       ESP_LOGE(TAG_MAIN, "Error: Failed to publish boot timestamp to HA (MQTT buffer full or disconnected).");
   }
+  // Publish the device ID string.
+  device_id_sensor.setValue(device_id_str);
 }
 
 //-----------------------------------------------------------------------------
