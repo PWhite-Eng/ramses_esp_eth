@@ -2,7 +2,7 @@
 
 static constexpr const char* JSON_KEY_MSG = "msg";
 static constexpr const char* JSON_KEY_TS  = "ts";
-static constexpr TickType_t QUEUE_SEND_WAIT_TICKS = 10; // 10 ticks to wait if queue is full
+static constexpr TickType_t QUEUE_SEND_WAIT_TICKS = 0; // If the queue is full, it is better to drop that single MQTT message than to stall the radio driver and lose sync with the RF stream
 
 // --- Constructor ---
 GatewayHandler::GatewayHandler(EvofwProtocol& proto, EvofwHandler& handler, Stream& host, 
