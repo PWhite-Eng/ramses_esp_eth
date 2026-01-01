@@ -143,13 +143,13 @@ void EvofwProtocol::uart_rx_enable(void) {
     };
 
     // 2. Configure Interrupts: The "Secret Sauce"
-    // We only enable RXFIFO_FULL. We DO NOT enable FRAME_ERR.
-    uart_intr_config_t uart_intr = {
-        .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M, 
-        .rxfifo_full_thresh = 1,  // Interrupt on every byte received
-        .rx_timeout_thresh = 0,
-        .txfifo_empty_intr_thresh = 0, // Default
-    };
+    // We use member-wise assignment to avoid "out-of-order initializer" errors in C++.
+    uart_intr_config_t uart_intr = {}; // Initialize all fields to 0
+    
+    uart_intr.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M; // Enable only FIFO FULL interrupt
+    uart_intr.rxfifo_full_thresh = 1;                        // Interrupt on every byte (threshold 1)
+    uart_intr.rx_timeout_thresh = 10;                        // Optional: slight timeout (default is usually 10)
+    uart_intr.txfifo_empty_intr_thresh = 10;                 // Default value
 
     // 3. Install Driver
     // Buffer size 2048 is plenty. No event queue needed (passing NULL).
