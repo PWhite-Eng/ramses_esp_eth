@@ -63,10 +63,15 @@ static constexpr uint8_t MQTT_MSG_MAX_LEN = 255;         // Max len for a queued
 static constexpr TickType_t QUEUE_SEND_WAIT_TICKS = 10;  // 10 ticks to wait if queue is full
 
 // --- Radio/Serial Configuration ---
-static constexpr uint32_t SPI_CLK_RATE =  6000000;  // 6 MHz SPI clock for CC1101
-static constexpr uint32_t RADIO_BAUD_RATE = 38400;  // 38400 bps for Evofw radio communication
 static constexpr uint32_t HOST_BAUD_RATE = 115200;  // Baud rate for USB Serial
 static constexpr uint8_t  GWAY_CLASS = 18;          // Gateway device class
+static constexpr uint32_t SPI_CLK_RATE =  6000000;  // 6 MHz SPI clock for CC1101
+static constexpr uint32_t RADIO_BAUD_RATE = 38383;  // 38383 bps for Evofw radio communication
+// RADIO_BAUD_RATE 38383 matches CC1101 hardware rate (MDMCFG3=0x83, MDMCFG4=0x6A)
+// Formula: ((256 + 131) * 2^10 / 2^28) * 26MHz XOSC = 38,383.48 baud.
+// Standard 38400 causes ~0.04% drift, accumulating to ~16% phase error over long
+// packets. Setting ESP32 to 38383 aligns sampling to the center of the bit period,
+// preventing Manchester decoding errors (ERR:04) on trailing bytes due to jitter.
 
 // mac address buffer
 uint8_t mac[6];
