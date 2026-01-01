@@ -581,7 +581,7 @@ void gatewayTask(void *pvParameters) {
         // Work is defined as:
         //  a) Bytes in the UART RX buffer waiting to be processed (Serial1.available())
         //  b) Messages in the MQTT TX queue waiting to be sent (uxQueueMessagesWaiting)
-        if (Serial1.available() > 0 || uxQueueMessagesWaiting(app->txStringQueueHandle) > 0) {
+        if (app->protocol.hasData() || uxQueueMessagesWaiting(app->txStringQueueHandle) > 0) {
              // TURBO MODE: There is work to do. 
              // Loop immediately to process the next byte/message without yielding.
              // This ensures the Hardware/Software FIFO is drained instantly during bursts.
