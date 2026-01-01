@@ -562,11 +562,11 @@ void gatewayTask(void *pvParameters) {
 
     // Variables for CC1101 state monitoring
     unsigned long last_cc1101_update = 0;                  // Timestamp for CC1101 state updates
-    const unsigned long CC1101_UPDATE_INTERVAL_MS = 5000;  // Check state every 5 seconds
+    const unsigned long CC1101_UPDATE_INTERVAL_MS = 15000; // Check state every 15 seconds
     char state_str_buf[32];                                // Buffer for CC1101 state string
 
     unsigned long stuck_state_timestamp = 0; // Tracks when we first saw a stuck state
-    const unsigned long STUCK_STATE_TIMEOUT_MS = 10000; // 10 seconds (2 check intervals)
+    const unsigned long STUCK_STATE_TIMEOUT_MS = 30000; // 30 seconds (2 check intervals)
 
     // Cast the void pointer to our AppContext
     AppContext *app = static_cast<AppContext*>(pvParameters);
@@ -594,10 +594,11 @@ void gatewayTask(void *pvParameters) {
 
         // --- CC1101 State Monitoring & Watchdog ---
         unsigned long now = millis();
+        // Check every 15 seconds (sufficient for watchdog)
         if (now - last_cc1101_update > CC1101_UPDATE_INTERVAL_MS) {
             last_cc1101_update = now;
 
-            // This is now safe, as we are on Core 0
+            // 1. Get current hardware state. This is now safe, as we are on Core 0
             uint8_t status_byte = cc1101.strobe(CC1100_SNOP);
             uint8_t state = CC_STATE(status_byte);
 
@@ -614,7 +615,7 @@ void gatewayTask(void *pvParameters) {
                 default:                    state_str = "Other"; break;
             }
 
-            // --- Timeout Recovery Logic ---
+            // 2. Timeout Recovery Logic (Watchdog)
             bool is_stuck = false;
             // The only "good" states are IDLE and RX. Anything else is temporary.
             if (state != CC_STATE_IDLE && state != CC_STATE_RX) {
@@ -627,25 +628,37 @@ void gatewayTask(void *pvParameters) {
                     stuck_state_timestamp = now;
                     ESP_LOGW(TAG_GWAY, "Gateway Task: WARNING - CC1101 in unexpected state: 0x%02X", state);
                 } else if (now - stuck_state_timestamp > STUCK_STATE_TIMEOUT_MS) {
-                    // We have been stuck for over 10 seconds. Time to recover.
+                    // We have been stuck for over 30 seconds. Time to recover.
                     ESP_LOGE(TAG_GWAY, "Gateway Task: ERROR - CC1101 is STUCK. Forcing recovery...");
                     // Call our new public reset function.
                     // This is safe as app->protocol is on the same core.
                     app->protocol.resetToRx(); 
                     ESP_LOGI(TAG_GWAY, "Gateway Task: Recovery complete. Radio reset to RX mode.");
                     stuck_state_timestamp = 0; // Reset timer
-                    state_str = "RECOVERED_TO_RX"; // Set state string for MQTT
+                    state_str = "RECOVERED_TO_RX"; // Force an update so we know it happened
                 }
             } else if (stuck_state_timestamp != 0) {
                 // We were in a stuck state, but it cleared itself. Reset the timer.
                 ESP_LOGI(TAG_GWAY, "Gateway Task: INFO - CC1101 recovered on its own.");
-                stuck_state_timestamp = 0;
+                stuck_state_timestamp = 0;  // Clear timer if healthy
             }
 
-            // Send the result to the network task. Use xQueueOverwrite
-            // so we don't care if the network task is busy.
-            strncpy(state_str_buf, state_str, sizeof(state_str_buf)-1);
-            xQueueOverwrite(app->cc1101StateQueueHandle, &state_str_buf);
+            // 3. Report-by-Exception
+            // We keep a static buffer of the last state we sent to MQTT.
+            static char last_reported_state[32] = "";
+
+            // Only send if the state string is DIFFERENT from the last one
+            if (strncmp(state_str, last_reported_state, 32) != 0) {
+                strncpy(state_str_buf, state_str, sizeof(state_str_buf)-1);
+                state_str_buf[sizeof(state_str_buf)-1] = '\0';
+
+                // Update our history
+                strncpy(last_reported_state, state_str_buf, 32);
+
+                // Send to queue
+                xQueueOverwrite(app->cc1101StateQueueHandle, &state_str_buf);
+                ESP_LOGI(TAG_GWAY, "CC1101 State changed to: %s", state_str_buf);
+            }
         }
     }
 }
