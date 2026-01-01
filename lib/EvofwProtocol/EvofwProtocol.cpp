@@ -474,9 +474,12 @@ void EvofwProtocol::frame_tx_enable(void) {
         // vTaskDelay(1 / portTICK_PERIOD_MS); 
     }
 
-    // 3. Packet is now flushed, wait for it to finish sending
-    // (GDO0 goes HIGH when TX FIFO is empty)
+    // 3. Wait for transmission to complete
+    // IOCFG0 = 0x06: Asserts (HIGH) when Sync Word sent, De-asserts (LOW) when Packet ends.
+
     unsigned long tx_start = millis();
+
+    // A) Wait for Sync Word to be sent (Rising Edge)
     while (digitalRead(_gdo0_pin) == LOW) {
         if (millis() - tx_start > TX_FIFO_EMPTY_TIMEOUT_MS) { // 50ms timeout
             // This should not happen, but it's a safe fallback.
@@ -485,6 +488,15 @@ void EvofwProtocol::frame_tx_enable(void) {
         }
     }
     
+    // B) Wait for Packet to finish transmitting (Falling Edge)
+    tx_start = millis(); // Reset timeout timer
+    while (digitalRead(_gdo0_pin) == HIGH) {
+        if (millis() - tx_start > TX_FIFO_EMPTY_TIMEOUT_MS) { 
+            ESP_LOGW("EVOFW", "TX timeout waiting for GDO0 LOW (Packet End)");
+            break; 
+        }
+    }
+
     // 4. Finalize
     tx_fifo_wait(); // Call this once to finalize
     txFrm.state = FRM_TX_DONE; // Manually advance state
