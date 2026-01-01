@@ -131,13 +131,27 @@ void EvofwProtocol::loop(void) {
         // Process bytes immediately
         for(int i=0; i<len; i++) {
             frame_rx_byte(dtmp[i]);
+
+            // Check for packet completion immediately after every byte.
+            // This ensures we don't miss the start of a second packet that 
+            // arrives while we are processing this buffer chunk.
+            if (rxFrm.state >= FRM_RX_DONE) {
+                frame_rx_done();
+                
+                // frame_rx_done() calls frame_rx_reset() which sets state to FRM_RX_OFF (0).
+                // We must manually set it to FRM_RX_IDLE (1) so the state machine 
+                // is ready to accept the *next byte* in this loop as a new packet.
+                // NOTE: We do NOT call frame_rx_enable() here because that flushes 
+                // the UART buffer, which would delete the packet we are trying to catch!
+                rxFrm.state = FRM_RX_IDLE;
+            }
         }
 
         // Check if more data arrived while we were processing
         uart_get_buffered_data_len(_uart_num, &buffered_len);
     }
 
-    // Replaces frame_work()
+    // Standard state machine handling (TX logic, Recovery, etc.)
     switch( frame.state ) {
     case FRM_IDLE:
         if( rxFrm.state==FRM_RX_OFF ) {
@@ -146,6 +160,7 @@ void EvofwProtocol::loop(void) {
         break;
 
     case FRM_RX:
+        // Fallback check (unlikely to be hit if loop handles it, but safe to keep)
         if( rxFrm.state>=FRM_RX_DONE ) {
             frame_rx_done();
         }
@@ -153,6 +168,8 @@ void EvofwProtocol::loop(void) {
             if( txFrm.state==FRM_TX_READY ) {
                 frame_tx_enable();
             } else if( rxFrm.state==FRM_RX_OFF ) {
+                // If we finished a packet and the buffer was empty, we end up here.
+                // This call resets the UART for the next fresh reception.
                 frame_rx_enable();
             }
         }
