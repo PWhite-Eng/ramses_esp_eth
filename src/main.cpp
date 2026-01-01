@@ -115,7 +115,7 @@ static CC1101_HW_SPI cc1101_spi(
     SPI_CLK_RATE
 );
 static CC1101_ESP32 cc1101(cc1101_spi, CC1101_GDO0, CC1101_GDO2);          // CC1101 Driver
-static EvofwProtocol protocol(cc1101, Serial1, CC1101_GDO0, CC1101_GDO2);  // We use Serial1 for the async RX data from the CC1101's GDO2 pin
+static EvofwProtocol protocol(cc1101, CC1101_GDO0, CC1101_GDO2);           // We use Serial1 for the async RX data from the CC1101's GDO2 pin
 static EvofwHandler app_handler(protocol, cc1101); 
 static EthernetClient ethClient;                                           // Ethernet client for MQTT
 
