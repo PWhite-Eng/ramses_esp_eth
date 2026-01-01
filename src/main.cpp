@@ -572,7 +572,7 @@ void gatewayTask(void *pvParameters) {
     AppContext *app = static_cast<AppContext*>(pvParameters);
 
     while(1) {
-        app->gateway->run(); // Call the main run loop
+        app->gateway->run(); // This now processes ALL buffered bytes
 
         // Check and send CC1101 state updates
         unsigned long now = millis();
@@ -629,8 +629,14 @@ void gatewayTask(void *pvParameters) {
             strncpy(state_str_buf, state_str, sizeof(state_str_buf)-1);
             xQueueOverwrite(app->cc1101StateQueueHandle, &state_str_buf);
         }
-        // Yield to the scheduler. 1ms is very responsive.
-        vTaskDelay(1 / portTICK_PERIOD_MS);
+        // OPTIMIZATION:
+        // Removing the hard 1ms delay allows the loop to run as fast as possible.
+        // To prevent the Task Watchdog (TWDT) from triggering if there is a massive flood of data,
+        // you can use a tiny delay ONLY if necessary, or simply rely on the fact that
+        // EvofwProtocol::loop() will exit when the buffer is empty.
+        
+        // A minimal yield is recommended to keep the IDLE task happy on Core 0:
+        taskYIELD();
     }
 }
 
