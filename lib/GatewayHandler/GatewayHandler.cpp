@@ -7,7 +7,8 @@ static constexpr TickType_t QUEUE_SEND_WAIT_TICKS = 0; // If the queue is full, 
 // --- Constructor ---
 GatewayHandler::GatewayHandler(EvofwProtocol& proto, EvofwHandler& handler, Stream& host, 
                                QueueHandle_t ledQueue, QueueHandle_t txQueue, QueueHandle_t cmdQueue, 
-                               QueueHandle_t pubQueue, const uint8_t gwayClass, const uint8_t maxMsgLen,
+                               QueueHandle_t pubQueue, QueueHandle_t traceQueue, 
+                               const uint8_t gwayClass, const uint8_t maxMsgLen,
                                CommandResultCallback callback)
 
   : _protocol(proto), 
@@ -17,6 +18,7 @@ GatewayHandler::GatewayHandler(EvofwProtocol& proto, EvofwHandler& handler, Stre
     _txStringQueueHandle(txQueue), 
     _cmdStringQueueHandle(cmdQueue), 
     _publishQueueHandle(pubQueue),
+    _traceQueueHandle(traceQueue),
     _GWAY_CLASS(gwayClass), 
     _MQTT_MSG_MAX_LEN(maxMsgLen),
     _cmdResultCallback(callback)
@@ -205,6 +207,17 @@ void GatewayHandler::handleMqttCmd() {
     }
 }
 
+void GatewayHandler::publishTrace(const char* message) {
+    char trace_buf[_MQTT_MSG_MAX_LEN];
+    strncpy(trace_buf, message, _MQTT_MSG_MAX_LEN - 1);
+    trace_buf[_MQTT_MSG_MAX_LEN - 1] = '\0';
+
+    // Use a short wait time; if queue is full, drop the trace rather than stalling the radio
+    if (xQueueSend(_traceQueueHandle, &trace_buf, (TickType_t)0) != pdPASS) {
+        // Queue full, drop message
+    }
+}
+
 void GatewayHandler::handleRadioRx() {
     if (!_rxMsg) return;
 
@@ -242,6 +255,10 @@ void GatewayHandler::handleRadioRx() {
             ESP_LOGD(TAG_GWAY, "Gateway: Received RF Packet: %s", fullMsgBuf);
         }
     } else {
+        // If packet is invalid, send it to the Trace Queue
+        // This captures * ERR:06, * ERR:04, etc.
+        publishTrace(fullMsgBuf);
+
         setLedState(LED_ERROR_FLASH);
         ESP_LOGE(TAG_GWAY, "Gateway: Invalid RX Packet: %s", fullMsgBuf);
     }
