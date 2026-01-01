@@ -163,6 +163,12 @@ public:
      */
     uint8_t getTraceLevel() const { return _trace0; }
 
+    /**
+     * @brief Checks if there is data waiting in the UART buffer.
+     * Replaces Serial.available() for the new driver.
+     */
+    bool hasData();
+
 private:
     // --- Pointers to external objects ---
     CC1101_ESP32& _cc1101;
