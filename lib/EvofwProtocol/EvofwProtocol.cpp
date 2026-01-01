@@ -58,6 +58,41 @@ EvofwProtocol::EvofwProtocol(CC1101_ESP32 &cc1101, int8_t gdo0, int8_t gdo2)
 void EvofwProtocol::begin(uint32_t radio_baudrate) {
     _baudrate = radio_baudrate;
 
+    // --- UART DRIVER INSTALLATION (MOVED FROM uart_rx_enable) ---
+    // 1. Configure standard UART parameters
+    uart_config_t uart_config = {
+        .baud_rate = (int)_baudrate,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    // 2. Configure Interrupts
+    uart_intr_config_t uart_intr = {}; 
+    uart_intr.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M; 
+    uart_intr.rxfifo_full_thresh = 1;                        
+    uart_intr.rx_timeout_thresh = 10;                        
+    uart_intr.txfifo_empty_intr_thresh = 10;                 
+
+    // 3. Install Driver ONCE
+    // Check if already installed to be safe, though begin() should only run once.
+    if (uart_is_driver_installed(_uart_num)) {
+        uart_driver_delete(_uart_num);
+    }
+    
+    if (uart_driver_install(_uart_num, 2048, 0, 0, NULL, 0) != ESP_OK) {
+        ESP_LOGE("EVOFW", "UART driver install failed");
+        return; // Handle error appropriately
+    }
+
+    // 4. Apply configurations
+    ESP_ERROR_CHECK(uart_param_config(_uart_num, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(_uart_num, UART_PIN_NO_CHANGE, _gdo2_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_intr_config(_uart_num, &uart_intr));
+    // -------------------------------------------------------------
+
     // Calculate syncWord (from frame_init)
     syncWord = 0;
     for(uint8_t i=0 ; i<sizeof(evo_hdr) ; i++ )
@@ -142,41 +177,9 @@ void EvofwProtocol::loop(void) {
 // (RX is handled by HardwareSerial)
 
 void EvofwProtocol::uart_rx_enable(void) {
-    // [CHANGE] COMPLETE REWRITE for ESP-IDF Driver
-    
-    // 1. Configure standard UART parameters
-    uart_config_t uart_config = {
-        .baud_rate = (int)_baudrate,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-
-    // 2. Configure Interrupts: The "Secret Sauce"
-    // We use member-wise assignment to avoid "out-of-order initializer" errors in C++.
-    uart_intr_config_t uart_intr = {}; // Initialize all fields to 0
-    
-    uart_intr.intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M; // Enable only FIFO FULL interrupt
-    uart_intr.rxfifo_full_thresh = 1;                        // Interrupt on every byte (threshold 1)
-    uart_intr.rx_timeout_thresh = 10;                        // Optional: slight timeout (default is usually 10)
-    uart_intr.txfifo_empty_intr_thresh = 10;                 // Default value
-
-    // 3. Install Driver
-    // Buffer size 2048 is plenty. No event queue needed (passing NULL).
-    if (uart_driver_install(_uart_num, 2048, 0, 0, NULL, 0) != ESP_OK) {
-        ESP_LOGE("EVOFW", "UART driver install failed");
-        return;
-    }
-
-    // 4. Apply configurations
-    ESP_ERROR_CHECK(uart_param_config(_uart_num, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(_uart_num, UART_PIN_NO_CHANGE, _gdo2_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    ESP_ERROR_CHECK(uart_intr_config(_uart_num, &uart_intr));
-    
-    // 5. Flush any garbage
+    // Just flush garbage and enable the interrupt
     uart_flush_input(_uart_num);
+    uart_enable_rx_intr(_uart_num);
 }
 
 void EvofwProtocol::uart_tx_enable(void) {
@@ -187,7 +190,7 @@ void EvofwProtocol::uart_tx_enable(void) {
 
 void EvofwProtocol::uart_disable(void) {
     tx_stop();      // Detach GDO0 interrupt
-    uart_driver_delete(_uart_num);
+    uart_disable_rx_intr(_uart_num);
 }
 
 uint8_t EvofwProtocol::swap4(uint8_t in) {
