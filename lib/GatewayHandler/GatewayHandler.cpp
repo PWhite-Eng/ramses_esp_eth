@@ -33,7 +33,7 @@ GatewayHandler::GatewayHandler(EvofwProtocol& proto, EvofwHandler& handler, Stre
 // --- Public Methods ---
 
 void GatewayHandler::begin() {
-    ESP_LOGI(TAG_GWAY, "GatewayHandler: Application handler initialized.");
+    ESP_LOGD(TAG_GWAY, "GatewayHandler: Application handler initialized.");
 }
 
 void GatewayHandler::run() {
@@ -129,7 +129,7 @@ void GatewayHandler::handleMqttTx() {
 
     // Use a while loop to drain the queue on every call
     while (xQueueReceive(_txStringQueueHandle, &tx_string, (TickType_t)0)) {
-        ESP_LOGI(TAG_GWAY, "Gateway: Dequeued TX from MQTT: %s", tx_string);
+        ESP_LOGD(TAG_GWAY, "Gateway: Dequeued TX from MQTT: %s", tx_string);
 
         if (!_txMsgMQTT) {
             _txMsgMQTT = _protocol.msg_alloc();
@@ -148,10 +148,10 @@ void GatewayHandler::handleMqttTx() {
             }
 
             if (scan_complete && _protocol.msg_isValid(_txMsgMQTT)) {
-                ESP_LOGI(TAG_GWAY, "Gateway: TX message parsed OK, queuing for radio.");
+                ESP_LOGD(TAG_GWAY, "Gateway: TX message parsed OK, queuing for radio.");
                 _protocol.msg_tx_ready(&_txMsgMQTT); // This sets _txMsgMQTT to NULL
             } else {
-                ESP_LOGI(TAG_GWAY, "Gateway: TX message from MQTT is invalid.");
+                ESP_LOGD(TAG_GWAY, "Gateway: TX message from MQTT is invalid.");
                 _protocol.msg_free(&_txMsgMQTT); // This sets _txMsgMQTT to NULL
             }
         } else {
@@ -165,7 +165,7 @@ void GatewayHandler::handleMqttCmd() {
     char cmd_string[_MQTT_MSG_MAX_LEN];
 
     if (xQueueReceive(_cmdStringQueueHandle, &cmd_string, (TickType_t)0)) {
-        ESP_LOGI(TAG_GWAY, "Gateway: Received CMD from MQTT: %s", cmd_string);
+        ESP_LOGD(TAG_GWAY, "Gateway: Received CMD from MQTT: %s", cmd_string);
 
         char* responseBuffer = nullptr;
         uint8_t responseLen = 0;
@@ -236,10 +236,10 @@ void GatewayHandler::handleRadioRx() {
         publishRadioPacket(fullMsgBuf);
         if (_protocol.msg_isTx(_rxMsg)) {
             setLedState(LED_TX_FLASH);
-            ESP_LOGI(TAG_GWAY, "Gateway: Confirmed TX Sent: %s", fullMsgBuf);
+            ESP_LOGD(TAG_GWAY, "Gateway: Confirmed TX Sent: %s", fullMsgBuf);
         } else {
             setLedState(LED_RX_FLASH);
-            ESP_LOGI(TAG_GWAY, "Gateway: Received RF Packet: %s", fullMsgBuf);
+            ESP_LOGD(TAG_GWAY, "Gateway: Received RF Packet: %s", fullMsgBuf);
         }
     } else {
         setLedState(LED_ERROR_FLASH);
