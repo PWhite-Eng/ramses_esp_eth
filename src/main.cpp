@@ -96,6 +96,7 @@ struct AppContext {
     QueueHandle_t txStringQueueHandle;
     QueueHandle_t cmdStringQueueHandle;
     QueueHandle_t publishQueueHandle;
+    QueueHandle_t traceQueueHandle;
     QueueHandle_t cc1101StateQueueHandle;
     // --- Gateway Handler ---
     GatewayHandler* gateway;
@@ -137,6 +138,7 @@ char base_topic[64];
 char ha_base_topic[64];
 char rx_topic[80];
 char tx_topic[80];
+char trace_topic[80];
 char cmd_topic[80];
 char cmd_result_topic[80];
 char boot_topic[128];             // Holds the topic string: RAMSES/GATEWAY/.../boot_time/stat_t
@@ -155,6 +157,7 @@ static AppContext app = {
     .txStringQueueHandle = nullptr,
     .cmdStringQueueHandle = nullptr,
     .publishQueueHandle = nullptr,
+    .traceQueueHandle = nullptr,
     .cc1101StateQueueHandle = nullptr,
     .gateway = nullptr
 };
@@ -176,6 +179,7 @@ void onMqttConnected();
 void processPublishQueue();                                      // Checks the publish queue and sends any radio messages to MQTT.
 void processCC1101StateQueue();                                  // Checks the state queue and publishes the CC1101 state to HA.
 void publishCommandResult(const char* cmd, const char* result);  // Public callback function to be passed to GatewayHandler.
+void processTraceQueue();                                        // Checks the trace queue and publishes trace/log messages to MQTT.
 
 void verifyBootTime();                                           // Verifies the boot time by subscribing to the boot topic.
 
@@ -266,6 +270,10 @@ void setup() {
   if (app.publishQueueHandle == NULL) {
     ESP_LOGE(TAG_MAIN, "setup: FAILED to create Publish queue!");
   }
+  app.traceQueueHandle = xQueueCreate(MQTT_QUEUE_LENGTH, MQTT_MSG_MAX_LEN);
+  if (app.traceQueueHandle == NULL) {
+    ESP_LOGE(TAG_MAIN, "setup: FAILED to create Trace queue!");
+  }
 
   // Initialize the CC1101 library
   if (app.cc1101.begin()) {
@@ -318,6 +326,8 @@ void setup() {
   ESP_LOGI(TAG_NET, "MQTT HA Base Topic: %s", ha_base_topic);
   snprintf(rx_topic, sizeof(rx_topic), "%s/rx", base_topic);
   ESP_LOGI(TAG_NET, "MQTT RX Topic: %s", rx_topic);
+  snprintf(trace_topic, sizeof(trace_topic), "%s/trace", base_topic);
+  ESP_LOGI(TAG_NET, "MQTT Trace Topic: %s", trace_topic);
   snprintf(tx_topic, sizeof(tx_topic), "%s/tx", base_topic);
   ESP_LOGI(TAG_NET, "MQTT TX Topic: %s", tx_topic);
   snprintf(cmd_topic, sizeof(cmd_topic), "%s/cmd/cmd", base_topic);
@@ -379,6 +389,7 @@ void setup() {
       app.txStringQueueHandle,    // QueueHandle_t txQueue
       app.cmdStringQueueHandle,   // QueueHandle_t cmdQueue
       app.publishQueueHandle,     // QueueHandle_t pubQueue
+      app.traceQueueHandle,       // QueueHandle_t traceQueue
       GWAY_CLASS,                 // const uint8_t gwayClass
       MQTT_MSG_MAX_LEN,           // const uint8_t maxMsgLen
       // Use a C++ lambda to bind the NetworkHandler's member function
@@ -386,6 +397,10 @@ void setup() {
           publishCommandResult(cmd, result);
       }
   );
+
+  // [IMPORTANT] Ensure Tracing is ON so errors aren't dropped silently
+  app.protocol.setTraceLevel(TRC_ERROR);
+
   app.gateway->begin(); // This initializes the app handler and prints the version
   
 
@@ -477,6 +492,8 @@ void loop() {
   
   // Check boot time is correct on MQTT Server
   verifyBootTime();
+  // Process Trace Queue
+  processTraceQueue();
   // Check if the gateway task has a message for us to publish
   processPublishQueue();
   // Check and publish CC1101 state
@@ -754,6 +771,28 @@ void onMqttConnected() {
         ESP_LOGI(TAG_MAIN, "Published device ID to HA: %s", device_id_str);
     } else {
         ESP_LOGE(TAG_MAIN, "Error: Failed to publish device ID to HA (MQTT buffer full or disconnected).");
+    }
+}
+
+void processTraceQueue() {
+    char msg_to_publish[MQTT_MSG_MAX_LEN];
+    if (xQueueReceive(app.traceQueueHandle, &msg_to_publish, (TickType_t)0)) {
+        // We got a trace message
+        JsonDocument doc;
+        char timestamp_buf[40]; 
+        char json_output_buf[384];
+
+        getTimestamp(timestamp_buf, sizeof(timestamp_buf));
+
+        doc["msg"] = msg_to_publish;
+        doc["ts"] = timestamp_buf; 
+        doc["type"] = "trace"; // Optional: tag it as trace
+
+        size_t len = serializeJson(doc, json_output_buf, sizeof(json_output_buf));
+
+        if (len > 0) {
+            mqtt.publish(trace_topic, json_output_buf, false);
+        }
     }
 }
 
