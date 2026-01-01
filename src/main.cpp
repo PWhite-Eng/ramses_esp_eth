@@ -572,9 +572,27 @@ void gatewayTask(void *pvParameters) {
     AppContext *app = static_cast<AppContext*>(pvParameters);
 
     while(1) {
-        app->gateway->run(); // This now processes ALL buffered bytes
+        // 1. Run the Gateway Logic
+        // This processes the protocol state machine and drains the UART buffer
+        app->gateway->run();
 
-        // Check and send CC1101 state updates
+        // 2. Conditional Sleep Logic (Fix for Packet Loss + Watchdog)
+        // We check if there is immediate work pending. 
+        // Work is defined as:
+        //  a) Bytes in the UART RX buffer waiting to be processed (Serial1.available())
+        //  b) Messages in the MQTT TX queue waiting to be sent (uxQueueMessagesWaiting)
+        if (Serial1.available() > 0 || uxQueueMessagesWaiting(app->txStringQueueHandle) > 0) {
+             // TURBO MODE: There is work to do. 
+             // Loop immediately to process the next byte/message without yielding.
+             // This ensures the Hardware/Software FIFO is drained instantly during bursts.
+        } else {
+             // ECO MODE: No immediate work.
+             // Sleep for 1 tick (1ms) to let the IDLE task run.
+             // This feeds the Task Watchdog Timer (TWDT) on Core 0 so it doesn't crash.
+             vTaskDelay(1); 
+        }
+
+        // --- CC1101 State Monitoring & Watchdog ---
         unsigned long now = millis();
         if (now - last_cc1101_update > CC1101_UPDATE_INTERVAL_MS) {
             last_cc1101_update = now;
@@ -629,14 +647,6 @@ void gatewayTask(void *pvParameters) {
             strncpy(state_str_buf, state_str, sizeof(state_str_buf)-1);
             xQueueOverwrite(app->cc1101StateQueueHandle, &state_str_buf);
         }
-        // OPTIMIZATION:
-        // Removing the hard 1ms delay allows the loop to run as fast as possible.
-        // To prevent the Task Watchdog (TWDT) from triggering if there is a massive flood of data,
-        // you can use a tiny delay ONLY if necessary, or simply rely on the fact that
-        // EvofwProtocol::loop() will exit when the buffer is empty.
-        
-        // A minimal yield is recommended to keep the IDLE task happy on Core 0:
-        taskYIELD();
     }
 }
 
