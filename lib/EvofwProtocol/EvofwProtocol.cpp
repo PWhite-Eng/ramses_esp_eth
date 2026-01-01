@@ -120,7 +120,7 @@ void EvofwProtocol::loop(void) {
 
 void EvofwProtocol::uart_rx_enable(void) {
     // Increase buffer size BEFORE begin() to prevent overflow during packet bursts
-    _uart.setRxBufferSize(1024);
+    _uart.setRxBufferSize(4096);
     // Use the GDO2 pin as the RX pin for the specified UART
     _uart.begin(_baudrate, SERIAL_8N1, _gdo2_pin, -1);
 }
