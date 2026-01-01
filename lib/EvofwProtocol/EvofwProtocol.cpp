@@ -43,9 +43,10 @@ static const uint8_t address_flags[4] = {
 
 
 // --- Constructor ---
-EvofwProtocol::EvofwProtocol(CC1101_ESP32 &cc1101, HardwareSerial &uart, int8_t gdo0, int8_t gdo2)
-    : _cc1101(cc1101), _uart(uart), _gdo0_pin(gdo0), _gdo2_pin(gdo2) {
+EvofwProtocol::EvofwProtocol(CC1101_ESP32 &cc1101, int8_t gdo0, int8_t gdo2)
+    : _cc1101(cc1101), _gdo0_pin(gdo0), _gdo2_pin(gdo2) {
     
+    _uart_num = UART_NUM_1; // Hardcode to UART 1 (or make configurable)
     _trace0 = 0; // Default trace to off
     msgRx = nullptr;
     TxMsg = nullptr;
@@ -74,9 +75,18 @@ void EvofwProtocol::begin(uint32_t radio_baudrate) {
 }
 
 void EvofwProtocol::loop(void) {
-    // Replaces uart_work()
-    while (_uart.available() > 0) {
-        frame_rx_byte(_uart.read());
+    // We use the ESP-IDF driver to poll the buffer
+    size_t buffered_len;
+    uart_get_buffered_data_len(_uart_num, &buffered_len);
+
+    if (buffered_len > 0) {
+        // Read available bytes into a temp buffer or one by one
+        // For simplicity with existing logic, we read one by one or small chunks
+        uint8_t dtmp[64]; // Small chunk buffer
+        int len = uart_read_bytes(_uart_num, dtmp, (buffered_len > 64 ? 64 : buffered_len), 0);
+        for(int i=0; i<len; i++) {
+            frame_rx_byte(dtmp[i]);
+        }
     }
 
     // Replaces frame_work()
@@ -119,10 +129,39 @@ void EvofwProtocol::loop(void) {
 // (RX is handled by HardwareSerial)
 
 void EvofwProtocol::uart_rx_enable(void) {
-    // Increase buffer size BEFORE begin() to prevent overflow during packet bursts
-    _uart.setRxBufferSize(4096);
-    // Use the GDO2 pin as the RX pin for the specified UART
-    _uart.begin(_baudrate, SERIAL_8N1, _gdo2_pin, -1);
+    // [CHANGE] COMPLETE REWRITE for ESP-IDF Driver
+    
+    // 1. Configure standard UART parameters
+    uart_config_t uart_config = {
+        .baud_rate = (int)_baudrate,
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    // 2. Configure Interrupts: The "Secret Sauce"
+    // We only enable RXFIFO_FULL. We DO NOT enable FRAME_ERR.
+    uart_intr_config_t uart_intr = {
+        .intr_enable_mask = UART_INTR_RXFIFO_FULL, 
+        .rxfifo_full_thresh = 1,  // Interrupt on every byte received
+    };
+
+    // 3. Install Driver
+    // Buffer size 2048 is plenty. No event queue needed (passing NULL).
+    if (uart_driver_install(_uart_num, 2048, 0, 0, NULL, 0) != ESP_OK) {
+        ESP_LOGE("EVOFW", "UART driver install failed");
+        return;
+    }
+
+    // 4. Apply configurations
+    ESP_ERROR_CHECK(uart_param_config(_uart_num, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(_uart_num, UART_PIN_NO_CHANGE, _gdo2_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_intr_config(_uart_num, &uart_intr));
+    
+    // 5. Flush any garbage
+    uart_flush_input(_uart_num);
 }
 
 void EvofwProtocol::uart_tx_enable(void) {
@@ -133,7 +172,7 @@ void EvofwProtocol::uart_tx_enable(void) {
 
 void EvofwProtocol::uart_disable(void) {
     tx_stop();      // Detach GDO0 interrupt
-    _uart.end();    // Stop hardware UART
+    uart_driver_delete(_uart_num);
 }
 
 uint8_t EvofwProtocol::swap4(uint8_t in) {
