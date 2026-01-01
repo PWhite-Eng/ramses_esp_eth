@@ -173,12 +173,14 @@ uint8_t CC1101_ESP32::readRSSI(void) {
 void CC1101_ESP32::enterIdleMode(void) {
     // Send IDLE strobe until chip reports IDLE state
     unsigned long start = millis();
+
     while (CC_STATE(strobe(CC1100_SIDLE)) != CC_STATE_IDLE){
         if (millis() - start > CC1101_STATE_TIMEOUT_MS) {
             ESP_LOGE("CC1101", "Timeout waiting for IDLE state!");
             break; // Exit loop on timeout
         }
-        vTaskDelay(1 / portTICK_PERIOD_MS); // Add a 1ms yield
+        // Yield only if necessary for watchdog, but usually this is fast enough (<1ms)
+        // esp_rom_delay_us(10);
     }
 }
 
@@ -191,12 +193,14 @@ void CC1101_ESP32::enterRxMode(void) {
     strobe(CC1100_SFRX); // Flush RX FIFO
 
     unsigned long start = millis();
+
     while (CC_STATE(strobe(CC1100_SRX)) != CC_STATE_RX){
         if (millis() - start > CC1101_STATE_TIMEOUT_MS) {
             ESP_LOGE("CC1101", "Timeout waiting for RX state!");
             break; // Exit loop on timeout
         }
-        vTaskDelay(1 / portTICK_PERIOD_MS); // Add a 1ms yield
+        // Yield only if necessary for watchdog, but usually this is fast enough (<1ms)
+        // esp_rom_delay_us(10);
     } // Enter RX
 }
 
@@ -209,8 +213,8 @@ void CC1101_ESP32::enterTxMode(void) {
     strobe(CC1100_SFTX); // Flush TX FIFO
 
     unsigned long start = millis();
+
     while (CC_STATE(strobe(CC1100_STX)) != CC_STATE_TX){
-        vTaskDelay(1 / portTICK_PERIOD_MS); // Add a 1ms yield
         if (millis() - start > CC1101_STATE_TIMEOUT_MS) {
             ESP_LOGE("CC1101", "Timeout waiting for TX state!");
             break; // Exit loop on timeout
