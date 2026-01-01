@@ -46,7 +46,7 @@
 //-----------------------------------------------------------------------------
 
 // --- Task Configuration ---
-static constexpr int       MAIN_TASK_PRIORITY   = 1;
+static constexpr int       MAIN_TASK_PRIORITY   = 10;
 static constexpr int       MAIN_TASK_CORE       = 0;
 static constexpr uint32_t  MAIN_TASK_STACK_SIZE = 4096;
 
