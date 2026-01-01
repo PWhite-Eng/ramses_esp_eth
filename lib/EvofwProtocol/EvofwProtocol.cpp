@@ -1,5 +1,6 @@
 #include "EvofwProtocol.hpp"
 #include <driver/gpio.h>
+#include <soc/uart_reg.h>
 #include "debug.h"
 #include "log_config.h"
 
@@ -144,8 +145,10 @@ void EvofwProtocol::uart_rx_enable(void) {
     // 2. Configure Interrupts: The "Secret Sauce"
     // We only enable RXFIFO_FULL. We DO NOT enable FRAME_ERR.
     uart_intr_config_t uart_intr = {
-        .intr_enable_mask = UART_INTR_RXFIFO_FULL, 
+        .intr_enable_mask = UART_RXFIFO_FULL_INT_ENA_M, 
         .rxfifo_full_thresh = 1,  // Interrupt on every byte received
+        .rx_timeout_thresh = 0,
+        .txfifo_empty_intr_thresh = 0, // Default
     };
 
     // 3. Install Driver
