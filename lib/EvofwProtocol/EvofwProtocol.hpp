@@ -3,7 +3,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <HardwareSerial.h>
+#include <driver/uart.h>
 #include "CC1101_ESP32.hpp"
 #include "trace.h"
 
@@ -74,7 +74,7 @@ public:
      * @param gdo0   GPIO pin number connected to CC1101 GDO0 (for TX FIFO interrupt).
      * @param gdo2   GPIO pin number connected to CC1101 GDO2 (for RX data output).
      */
-    EvofwProtocol(CC1101_ESP32 &cc1101, HardwareSerial &uart, int8_t gdo0, int8_t gdo2);
+    EvofwProtocol(CC1101_ESP32 &cc1101, int8_t gdo0, int8_t gdo2);
 
     /**
      * @brief Initializes the protocol stack and radio mode.
@@ -166,7 +166,7 @@ public:
 private:
     // --- Pointers to external objects ---
     CC1101_ESP32& _cc1101;
-    HardwareSerial& _uart;
+    uart_port_t _uart_num;
     int8_t _gdo0_pin;
     int8_t _gdo2_pin;
     uint32_t _baudrate;
