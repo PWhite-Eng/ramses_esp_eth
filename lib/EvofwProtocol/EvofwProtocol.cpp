@@ -75,7 +75,7 @@ void EvofwProtocol::begin(uint32_t radio_baudrate) {
 
 void EvofwProtocol::loop(void) {
     // Replaces uart_work()
-    if (_uart.available()) {
+    while (_uart.available() > 0) {
         frame_rx_byte(_uart.read());
     }
 
