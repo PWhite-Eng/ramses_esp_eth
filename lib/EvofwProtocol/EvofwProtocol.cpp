@@ -75,19 +75,31 @@ void EvofwProtocol::begin(uint32_t radio_baudrate) {
     frame.state = FRM_IDLE;
 }
 
+bool EvofwProtocol::hasData() {
+    size_t buffered_len;
+    uart_get_buffered_data_len(_uart_num, &buffered_len);
+    return buffered_len > 0;
+}
+
 void EvofwProtocol::loop(void) {
     // We use the ESP-IDF driver to poll the buffer
     size_t buffered_len;
     uart_get_buffered_data_len(_uart_num, &buffered_len);
 
-    if (buffered_len > 0) {
-        // Read available bytes into a temp buffer or one by one
-        // For simplicity with existing logic, we read one by one or small chunks
-        uint8_t dtmp[64]; // Small chunk buffer
-        int len = uart_read_bytes(_uart_num, dtmp, (buffered_len > 64 ? 64 : buffered_len), 0);
+    while (buffered_len > 0) {
+        uint8_t dtmp[128]; // Increase chunk size to 128 (hardware FIFO size)
+        int to_read = (buffered_len > 128) ? 128 : buffered_len;
+
+        // Read the chunk
+        int len = uart_read_bytes(_uart_num, dtmp, to_read, 0);
+
+        // Process bytes immediately
         for(int i=0; i<len; i++) {
             frame_rx_byte(dtmp[i]);
         }
+
+        // Check if more data arrived while we were processing
+        uart_get_buffered_data_len(_uart_num, &buffered_len);
     }
 
     // Replaces frame_work()
