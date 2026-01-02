@@ -19,17 +19,31 @@ TOPIC_ROOT = f"RAMSES/GATEWAY/{DEVICE_ID}"
 TOPIC_CMD = f"{TOPIC_ROOT}/cmd/cmd"
 TOPIC_CMD_RESULT = f"{TOPIC_ROOT}/cmd/result"
 
+# Constants
+OSC_FREQ = 26000000.0  # 26 MHz Crystal Frequency
+
 # State Tracking
 tuning_active = False
 saving_active = False
 start_time = 0
-last_freq = "Unknown"
+last_freq_hex = "Unknown"
 
 
-# --- Helper Function for Logging ---
+# --- Helper Functions ---
 def log(msg):
     timestamp = datetime.now().strftime("%H:%M:%S")
     print(f"[{timestamp}] {msg}")
+
+
+def hex_to_hz(hex_str):
+    """Converts CC1101 hex frequency register value to Hz."""
+    try:
+        raw_val = int(hex_str, 16)
+        # Formula: F_carrier = (Fxosc / 2^16) * FREQ[23:0]
+        freq_hz = (OSC_FREQ / 65536.0) * raw_val
+        return int(freq_hz)
+    except ValueError:
+        return 0
 
 
 # --- Callbacks ---
@@ -54,7 +68,7 @@ def on_connect(client, userdata, flags, reason_code, properties=None):
 
 
 def on_message(client, userdata, msg):
-    global tuning_active, saving_active, last_freq
+    global tuning_active, saving_active, last_freq_hex
 
     try:
         payload = json.loads(msg.payload.decode())
@@ -67,18 +81,25 @@ def on_message(client, userdata, msg):
 
         # 1. Handle Status Updates (!F)
         if cmd_sent == "!F":
-            # Print the raw status from the device
-            log(f"[STATUS] {result_str.strip()}")
-
             # Extract frequency from string like "!F F=21656a tuning"
             match = re.search(r"F=([0-9a-fA-F]{6})", result_str)
+
+            freq_display = "Unknown"
+
             if match:
-                last_freq = match.group(1)
+                last_freq_hex = match.group(1)
+                hz = hex_to_hz(last_freq_hex)
+                freq_display = f"{hz} Hz"
 
             # Check if tuning is still happening
             if "tuning" not in result_str and tuning_active:
                 log("\n--- TUNING COMPLETE ---")
-                log(f"Final Frequency Detected: {last_freq}")
+
+                # Calculate final Hz and MHz
+                final_hz = hex_to_hz(last_freq_hex)
+                final_mhz = final_hz / 1000000.0
+
+                log(f"Final Frequency Detected: {final_hz} Hz ({final_mhz:.2f} MHz)")
 
                 # Stop the polling loop
                 tuning_active = False
@@ -89,13 +110,17 @@ def on_message(client, userdata, msg):
                 saving_active = True
 
             elif tuning_active:
-                log(f"... Tuning in progress (Current: {last_freq}) ...")
+                log(f"[STATUS] {result_str.strip()}")
+                log(f"... Tuning in progress (Current: {freq_display}) ...")
 
         # 2. Handle Save Confirmation (!FS)
         elif cmd_sent == "!FS" and saving_active:
             if "Saved" in result_str:
                 log("\n[SUCCESS] Settings verified as SAVED to NVS.")
-                log(f"Stored Frequency: {last_freq}")
+
+                final_hz = hex_to_hz(last_freq_hex)
+                final_mhz = final_hz / 1000000.0
+                log(f"Stored Frequency: {final_hz} Hz ({final_mhz:.2f} MHz)")
             else:
                 log(
                     f"\n[WARNING] received response to save, but 'Saved' text missing: {result_str}"
